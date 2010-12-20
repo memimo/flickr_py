@@ -3,6 +3,7 @@ import signal, os
 import glob
 import sys
 from optparse import OptionParser
+import ConfigParser
 
 '''
 A simple flicker uploader 
@@ -12,11 +13,12 @@ for flickrapi refer to:
 http://stuvel.eu/projects/flickrapi
 
 '''
+
 #Custom exception
 class TimeoutException(Exception): 
     pass 
 
-
+#-----
 def status(progress, done):
     '''Update status of upload'''
 
@@ -26,6 +28,7 @@ def status(progress, done):
     #    sys.stdout.write(" %d%% " % int(progress))
     #   sys.stdout.flush()
 
+#------
 def aut(api_key, api_secret):
     '''flickr authentication'''
 
@@ -37,7 +40,7 @@ def aut(api_key, api_secret):
     return flickr
 
 
-
+#---------
 def upload(flickr, file_list, public, alarm_time):
     ''' Upload files to flickr
         flickr: flickr object
@@ -66,7 +69,7 @@ def upload(flickr, file_list, public, alarm_time):
 
     return err_list
 
-
+#------
 def get_files_dir(directory):
     '''get list of multimedia files in a directoru'''
 
@@ -79,6 +82,8 @@ def get_files_dir(directory):
 
     return files 
 
+
+#-----
 def get_files_list(path):
     '''Read list of files from a file'''
 
@@ -88,7 +93,7 @@ def get_files_list(path):
 
     return f_list
 
-
+#-------
 def save(e_list):
     '''save list of files in a text file'''
 
@@ -97,22 +102,54 @@ def save(e_list):
         f.write(item + '\n')
     f.close()
 
+#--------
+def get_keys(conf_fname):
+    '''read the api_key and api_secret from the config file'''
 
+    config = ConfigParser.ConfigParser()
+
+    #check if files exists
+    if not os.path.isfile(conf_fname):
+        config.add_section('App_Info')
+        api_key = config.set('AppInfo', 'api_key', '')
+        api_secret = config.set('AppInfo', 'api_secret', '')
+        with open(conf_fname, 'w') as configfile:
+            config.write(configfile)
+        raise NameError('Pleas fill App info in config file')
+    else:
+        config.read(conf_fname)
+
+    api_key = config.get('AppInfo', 'api_key')
+    api_secret = config.get('AppInfo', 'api_secret')
+
+    return api_key, api_secret
+
+
+#---------Main----
 def main():
 
     usage = "usage: %prog [options] arg"
     parser = OptionParser(usage)
 
-    parser.add_option("-d", "--directory",  dest = "source_dir", default = os.getcwd(), help = "The source directory of multimedia files")
-    parser.add_option("-t", "--time", dest = "alarm_time", default = 60, help = "Maximum allowed time for each file upload")
-    parser.add_option("-l", "--list", dest = "file_list", default = None, help = "List of files to upload")
-    parser.add_option("-p", "--public", dest = "public", default = False, action = "store_true", help = "Publicly available?")
+    parser.add_option("-d", "--directory",  dest = "source_dir", 
+                      default = os.getcwd(), help = "The source \
+                      directory of multimedia files")
+    parser.add_option("-c", "--config",  dest = "config_fname", 
+                      default = '.config', help = "Path to config file in \
+                      which api_key and api_secret is stored")
+    parser.add_option("-t", "--time", dest = "alarm_time", default = 60, 
+                      help = "Maximum allowed time for each file upload")
+    parser.add_option("-l", "--list", dest = "file_list", default = None, 
+                      help = "List of files to upload")
+    parser.add_option("-p", "--public", dest = "public", default = False, 
+                      action = "store_true", help = "Publicly available?")
 
     (options, args) = parser.parse_args()
 
+
+    #get config
+    api_key, api_secret = get_keys(options.config_fname)
     #Authentication
-    api_key = '82a77c62b3f29ece6ce866ef58e09229'
-    api_secret = '7ed3450591a2a70b'
     print 'Authenting...'
     flickr = aut(api_key, api_secret)
 
@@ -122,6 +159,9 @@ def main():
         file_l = get_file_list(options.file_list)
     else:
         file_l = get_files_dir(options.source_dir)
+
+    if len(file_l) == 0:
+        raise NameError('No file to upload')
 
     err_list = upload(flickr, file_l,options.public, options.alarm_time)
     #Handle un-uploaded files

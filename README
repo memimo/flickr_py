@@ -1,1 +1,8 @@
 An interface over flicker api for python to upload images to flickr
+
+
+Requiremnets:
+
+	Python Flicker API kit :    http://stuvel.eu/flickrapi
+
+	easy_install flickrapi
